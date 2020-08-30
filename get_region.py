@@ -70,9 +70,62 @@ def get_resion_box(input_img, imgsz=416, weights="weights/kaimono/kaimono_0822/b
 		for reg in region:
 
 			if reg[-1] == 1:
-				box_region = reg[0:4]/rate_out[0]
+				box_region = reg[0:4]//rate_out[0]
+
 		print ("box_region",box_region)
 		return box_region
+
+def get_resion_item(input_img, imgsz=416, weights="weights/kaimono/kaimono_0822/best_kaimono_e1000_20200822.pt", conf_thre =0.5):
+	
+	with torch.no_grad():
+		# Initialize
+		# set_logging()
+		device = select_device("")
+		half = device.type != 'cpu'  # half precision only supported on CUDA
+		iou_thre  = 0.5
+
+		# Load model
+		model = attempt_load(weights, map_location=device)  # load FP32 model
+		imgsz = check_img_size(imgsz, s=model.stride.max())  # check img_size
+		if half:
+			model.half()  # to FP16
+
+		# Second-stage classifier
+
+		# Set Dataloader
+		dataset = LoadImages(input_img, img_size=imgsz)
+
+		# Run inference
+		img = torch.zeros((1, 3, imgsz, imgsz), device=device)  # init img
+		_ = model(img.half() if half else img) if device.type != 'cpu' else None  # run once
+		rate_out = 0.0
+		for path, img, im0s, vid_cap, rate in dataset:
+			rate_out = rate
+			img = torch.from_numpy(img).to(device)
+			img = img.half() if half else img.float()  # uint8 to fp16/32
+			img /= 255.0  # 0 - 255 to 0.0 - 1.0
+			if img.ndimension() == 3:
+				img = img.unsqueeze(0)
+
+		# Inference
+		pred = model(img, augment=False)[0]
+
+		# Apply NMS
+		pred = non_max_suppression(pred, conf_thre, iou_thre, classes=None, agnostic=False)
+
+		# Apply Classifier
+		region = []
+		if (not pred[0] == None):
+			region = pred[0].to('cpu').detach().numpy().copy()
+
+		item_region = []
+		for reg in region:
+
+			if reg[-1] == 0:
+				item_region.append(reg[0:4]//rate_out[0])
+
+		print ("item_region",item_region)
+		return item_region
 
 
 def letterbox(img, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True):
