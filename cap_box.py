@@ -2,6 +2,7 @@ import get_region as gr
 import cv2
 import numpy as np
 
+from bags_num import calc_bags_num
 
 
 cap = cv2.VideoCapture(0)
@@ -71,6 +72,10 @@ k = cv2.waitKey(3000)
 score = (1-sum_canny/box_empty_edge_average)*box_size
 
 print(score)
+
+eco_bag_capa = 40
+bags_num = calc_bags_num(score, eco_bag_capa)
+print("bags_num:\n(エコバッグ使用済み容量(%), S枚数, L枚数) = ", bags_num)
 
 if score <= eco_bag_size:
 	print("エコバッグのみで大丈夫です。")
